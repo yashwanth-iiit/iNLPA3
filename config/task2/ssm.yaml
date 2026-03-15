@@ -1,0 +1,30 @@
+data:
+  plain_file: "data/plain.txt"
+  train_split: 0.8
+  val_split: 0.1
+  test_split: 0.1
+  max_seq_len: 256
+
+model:
+  type: "ssm"
+  embedding_dim: 128
+  hidden_dim: 256
+  state_dim: 64
+  num_layers: 4
+  dropout: 0.2
+
+training:
+  epochs: 20
+  batch_size: 64
+  learning_rate: 0.001
+  clip_grad_norm: 1.0
+
+logging:
+  wandb_project: "inlp-a3"
+  wandb_run_name: "task2_ssm"
+
+output:
+  checkpoint_dir: "checkpoints/task2/ssm"
+  checkpoint_file: "checkpoints/task2/ssm/best.pt"
+  results_file: "outputs/results/task2_ssm.txt"
+  huggingface_repo: ""

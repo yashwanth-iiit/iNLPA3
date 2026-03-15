@@ -1,0 +1,30 @@
+data:
+  plain_file: "data/plain.txt"
+  train_split: 0.8
+  val_split: 0.1
+  test_split: 0.1
+  max_seq_len: 256
+  mask_prob: 0.15
+
+model:
+  type: "bilstm"
+  embedding_dim: 128
+  hidden_dim: 256
+  num_layers: 2
+  dropout: 0.3
+
+training:
+  epochs: 20
+  batch_size: 64
+  learning_rate: 0.001
+  clip_grad_norm: 1.0
+
+logging:
+  wandb_project: "inlp-a3"
+  wandb_run_name: "task2_bilstm"
+
+output:
+  checkpoint_dir: "checkpoints/task2/bilstm"
+  checkpoint_file: "checkpoints/task2/bilstm/best.pt"
+  results_file: "outputs/results/task2_bilstm.txt"
+  huggingface_repo: ""
