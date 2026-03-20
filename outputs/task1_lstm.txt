@@ -1,0 +1,66 @@
+Model      : LSTM
+char_acc   : 0.2156
+word_acc   : 0.0587
+levenshtein: 50.34
+
+── Sample Predictions ──
+TARGET : After I paid Monsieur Prieur for Dandy I brought him home but he was ill at ease and ran away the same night
+PREDICT: After the  are                                                                                             er
+
+TARGET : How he returned in such a ghastly condition or why I cannot say
+PREDICT: How te                                                        er
+
+TARGET : Dr Lalaurie and I didnt even know he was in the house until the night of our ball when he came down the stairs
+PREDICT: Dr ae                                                                                                        e
+
+TARGET : She daubed at her swimming eyes with a lacy handkerchief and said with obvious emotion That poor boy
+PREDICT: She was  o                                                                                         e 
+
+TARGET : He must have fallen in with evil companions for he was a simple youth and quite trusting and inexperienced
+PREDICT: He was  o                                                                                                e 
+
+TARGET : Ruffians must have robbed and beaten him before bringing him back to our house to die
+PREDICT: Ruch the  a the   the   the   the   the   the   the   the   the   the   the   the  ain
+
+TARGET : Such a pitiful end
+PREDICT: Such the  a t to t
+
+TARGET : Though the slaves dying words about the woman troubled the coroners panel Dandys accusation was adjudged an aberration by the 
+PREDICT: Those the  e                                                                                                                 er
+
+TARGET : The Lalauries were at the top rung of the social ladder and even a jury didnt feel privileged to doubt the veracity of so illu
+PREDICT: The sort                                                                                                                     e 
+
+TARGET : Moreover runaway slaves frequently got into serious trouble in New Orleans dives
+PREDICT: More                                                                           e 
+
+TARGET : So the verdict was death at the hands of a person or persons unknown and the elite of the city accepting Delphines testimony w
+PREDICT: So the  are                                                                                                                  e 
+
+TARGET : Once again life went its serene way soirees fox hunts balls and dinners
+PREDICT: One the  are                                                          er
+
+TARGET : The excitement over Brandons bizarre death abated and Madame Lalauries stock soared when she resumed her selfimposed chores of
+PREDICT: The seate                                                                                                                    e 
+
+TARGET : Then on July there occurred another incident which set tongues to wagging at a furious clip
+PREDICT: Then the sare                                                                              er
+
+TARGET : Mrs Victor Dominique socially prominent and a neighbor of the Lalauries chanced to glance out of her parlor window at dusk one
+PREDICT: Mr the                                                                                                                       e 
+
+TARGET : The manservant Devol and his mistress Delphine Lalaurie were pursuing a young girl an octoroon of cameolike beauty across the 
+PREDICT: The seate                                                                                                                    e 
+
+TARGET : The girl was not more than
+PREDICT: The seate               er
+
+TARGET : She was nude to the waist and her tumbled abundance of black hair did not conceal the knife slashes on her back
+PREDICT: She was  o                                                                                                    e 
+
+TARGET : The bleeding girl was tiring fast
+PREDICT: The sort                        e
+
+TARGET : the coachman and Delphine were gaining on her as she raced down Perdido Street
+PREDICT: the sare                                                                     er
+

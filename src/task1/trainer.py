@@ -160,9 +160,12 @@ def train(config_path: str):
     for epoch in range(1, cfg["training"]["epochs"] + 1):
         print(f"\nEpoch {epoch}/{cfg['training']['epochs']}")
 
+        # Decay teacher forcing ratio each epoch, min 0.3
+        tf_ratio = max(0.3, cfg["training"]["teacher_forcing_ratio"] - 0.02 * (epoch - 1))
+
         train_loss = train_epoch(
             model, train_loader, optimizer, criterion, device,
-            cfg["training"]["teacher_forcing_ratio"],
+            tf_ratio,
             cfg["training"]["clip_grad_norm"],
         )
 
