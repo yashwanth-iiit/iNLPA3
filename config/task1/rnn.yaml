@@ -29,4 +29,4 @@ output:
   checkpoint_dir: "checkpoints/task1/rnn"
   checkpoint_file: "checkpoints/task1/rnn/best.pt"
   results_file: "outputs/results/task1_rnn.txt"
-  huggingface_repo: ""
+  huggingface_repo: "yashwanthiiith/inlp-a3"

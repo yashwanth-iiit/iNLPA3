@@ -1,4 +1,5 @@
 import os
+import shutil
 import yaml
 import torch
 import torch.nn as nn
@@ -37,9 +38,6 @@ def train_epoch(model, loader, optimizer, criterion, device, teacher_forcing_rat
 
         optimizer.zero_grad()
         output = model(cipher, plain, teacher_forcing_ratio)
-        # output: (batch, tgt_len, vocab_size)
-        # plain:  (batch, tgt_len)
-        # skip position 0 (<SOS>) in loss
         output = output[:, 1:, :].contiguous().view(-1, output.shape[-1])
         target = plain[:, 1:].contiguous().view(-1)
 
@@ -67,7 +65,6 @@ def evaluate(model, loader, criterion, device, plain_vocab):
         loss = criterion(out_flat, tgt_flat)
         total_loss += loss.item()
 
-        # Greedy decode for metrics
         pred_ids = model.decode_greedy(cipher, SOS_IDX, EOS_IDX, plain.shape[1])
         preds = decode_predictions(pred_ids, plain_vocab, EOS_IDX, PAD_IDX)
         targets = decode_predictions(plain[:, 1:], plain_vocab, EOS_IDX, PAD_IDX)
@@ -82,6 +79,44 @@ def evaluate(model, loader, criterion, device, plain_vocab):
         "levenshtein": avg_levenshtein(all_preds, all_targets),
     }
     return metrics, all_preds, all_targets
+
+
+def save_results(cfg, metrics, preds, targets):
+    """Save metrics and sample predictions to results file and copy to kaggle output."""
+    results_file = cfg["output"]["results_file"]
+    os.makedirs(os.path.dirname(results_file), exist_ok=True)
+
+    with open(results_file, "w") as f:
+        f.write(f"Model      : {cfg['model']['type'].upper()}\n")
+        f.write(f"char_acc   : {metrics['char_acc']:.4f}\n")
+        f.write(f"word_acc   : {metrics['word_acc']:.4f}\n")
+        f.write(f"levenshtein: {metrics['levenshtein']:.2f}\n\n")
+        f.write("── Sample Predictions ──\n")
+        for pred, tgt in zip(preds[:20], targets[:20]):
+            f.write(f"TARGET : {tgt}\n")
+            f.write(f"PREDICT: {pred}\n\n")
+
+    print(f"Results saved to {results_file}")
+
+    # Auto-copy to /kaggle/working for easy download
+    if os.path.exists("/kaggle/working"):
+        dest = os.path.join("/kaggle/working", os.path.basename(results_file))
+        shutil.copy(results_file, dest)
+        print(f"Results copied to {dest}")
+
+
+def push_to_hf(model, cfg):
+    """Push model checkpoint to HuggingFace."""
+    if cfg["output"].get("huggingface_repo"):
+        task_name = cfg["logging"]["wandb_run_name"]
+        filename = f"{task_name}_best.pt"
+        save_and_push(
+            model,
+            cfg["output"]["huggingface_repo"],
+            filename=filename,
+            local_dir=cfg["output"]["checkpoint_dir"],
+        )
+        print(f"Pushed {filename} to HuggingFace: {cfg['output']['huggingface_repo']}")
 
 
 def train(config_path: str):
@@ -149,7 +184,6 @@ def train(config_path: str):
             "lr": optimizer.param_groups[0]["lr"],
         }, step=epoch)
 
-        # Save best checkpoint
         if val_metrics["loss"] < best_val_loss:
             best_val_loss = val_metrics["loss"]
             save_checkpoint(
@@ -160,16 +194,7 @@ def train(config_path: str):
             print(f"  ✓ saved checkpoint (val_loss={best_val_loss:.4f})")
 
     finish_wandb()
-
-    # Push to HuggingFace if repo configured
-    if cfg["output"].get("huggingface_repo"):
-        save_and_push(
-            model,
-            cfg["output"]["huggingface_repo"],
-            filename=f"{cfg['model']['type']}_best.pt",
-            local_dir=cfg["output"]["checkpoint_dir"],
-        )
-        print("Pushed to HuggingFace.")
+    push_to_hf(model, cfg)
 
     return model, plain_vocab, cipher_vocab, test_loader, cfg
 
@@ -186,10 +211,11 @@ def evaluate_and_save(config_path: str):
 
     # Load from HuggingFace or local checkpoint
     if cfg["output"].get("huggingface_repo"):
+        task_name = cfg["logging"]["wandb_run_name"]
         load_from_hub(
             model,
             cfg["output"]["huggingface_repo"],
-            filename=f"{cfg['model']['type']}_best.pt",
+            filename=f"{task_name}_best.pt",
             device=str(device),
         )
     else:
@@ -203,16 +229,5 @@ def evaluate_and_save(config_path: str):
     print(f"  word_acc   : {metrics['word_acc']:.4f}")
     print(f"  levenshtein: {metrics['levenshtein']:.2f}")
 
-    # Save results
-    os.makedirs(os.path.dirname(cfg["output"]["results_file"]), exist_ok=True)
-    with open(cfg["output"]["results_file"], "w") as f:
-        f.write(f"char_acc   : {metrics['char_acc']:.4f}\n")
-        f.write(f"word_acc   : {metrics['word_acc']:.4f}\n")
-        f.write(f"levenshtein: {metrics['levenshtein']:.2f}\n\n")
-        f.write("── Samples ──\n")
-        for pred, tgt in zip(preds[:20], targets[:20]):
-            f.write(f"TARGET : {tgt}\n")
-            f.write(f"PREDICT: {pred}\n\n")
-
-    print(f"Results saved to {cfg['output']['results_file']}")
+    save_results(cfg, metrics, preds, targets)
     return metrics
