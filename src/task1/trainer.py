@@ -1,4 +1,5 @@
 import os
+import json
 import shutil
 import yaml
 import torch
@@ -14,7 +15,7 @@ from src.utils.dataset import (
     PAD_IDX,
 )
 from src.utils.checkpoints import save_checkpoint, load_checkpoint
-from src.utils.hf_wandb import init_wandb, log_wandb, finish_wandb, save_and_push, load_from_hub
+from src.utils.hf_wandb import init_wandb, log_wandb, finish_wandb, save_and_push, load_from_hub, push_to_hub
 from src.task1.models import build_seq2seq
 from src.task1.metrics import (
     char_accuracy,
@@ -27,6 +28,37 @@ from src.task1.metrics import (
 def load_config(config_path: str) -> dict:
     with open(config_path) as f:
         return yaml.safe_load(f)
+
+
+def load_vocab(cfg: dict, task_name: str):
+    """Load vocab from HuggingFace or rebuild from data."""
+    if cfg["output"].get("huggingface_repo"):
+        try:
+            from huggingface_hub import hf_hub_download
+            vocab_path = hf_hub_download(
+                repo_id=cfg["output"]["huggingface_repo"],
+                filename=f"{task_name}_vocab.json",
+                local_dir=cfg["output"]["checkpoint_dir"],
+            )
+            with open(vocab_path) as f:
+                vocab_data = json.load(f)
+
+            plain_vocab = build_plain_vocab(cfg["data"]["plain_file"])
+            plain_vocab.token2idx = vocab_data["plain"]
+            plain_vocab.idx2token = {int(v): k for k, v in vocab_data["plain"].items()}
+
+            cipher_vocab = build_cipher_vocab()
+            cipher_vocab.token2idx = vocab_data["cipher"]
+            cipher_vocab.idx2token = {int(v): k for k, v in vocab_data["cipher"].items()}
+
+            print("Loaded vocab from HuggingFace")
+            return plain_vocab, cipher_vocab
+        except Exception as e:
+            print(f"Could not load vocab from HuggingFace: {e}, rebuilding from data")
+
+    plain_vocab = build_plain_vocab(cfg["data"]["plain_file"])
+    cipher_vocab = build_cipher_vocab()
+    return plain_vocab, cipher_vocab
 
 
 def train_epoch(model, loader, optimizer, criterion, device, teacher_forcing_ratio, clip):
@@ -105,18 +137,40 @@ def save_results(cfg, metrics, preds, targets):
         print(f"Results copied to {dest}")
 
 
-def push_to_hf(model, cfg):
-    """Push model checkpoint to HuggingFace."""
-    if cfg["output"].get("huggingface_repo"):
-        task_name = cfg["logging"]["wandb_run_name"]
-        filename = f"{task_name}_best.pt"
-        save_and_push(
-            model,
-            cfg["output"]["huggingface_repo"],
-            filename=filename,
-            local_dir=cfg["output"]["checkpoint_dir"],
+def push_to_hf(model, cfg, plain_vocab=None, cipher_vocab=None):
+    """Push model weights and vocab to HuggingFace."""
+    if not cfg["output"].get("huggingface_repo"):
+        return
+
+    task_name = cfg["logging"]["wandb_run_name"]
+    os.makedirs(cfg["output"]["checkpoint_dir"], exist_ok=True)
+
+    # Push model weights
+    filename = f"{task_name}_best.pt"
+    save_and_push(
+        model,
+        cfg["output"]["huggingface_repo"],
+        filename=filename,
+        local_dir=cfg["output"]["checkpoint_dir"],
+    )
+    print(f"Pushed {filename} to HuggingFace")
+
+    # Push vocab so results are reproducible
+    if plain_vocab is not None and cipher_vocab is not None:
+        vocab_path = os.path.join(
+            cfg["output"]["checkpoint_dir"], f"{task_name}_vocab.json"
         )
-        print(f"Pushed {filename} to HuggingFace: {cfg['output']['huggingface_repo']}")
+        with open(vocab_path, "w") as f:
+            json.dump({
+                "plain": plain_vocab.token2idx,
+                "cipher": cipher_vocab.token2idx,
+            }, f, indent=2)
+        push_to_hub(
+            vocab_path,
+            cfg["output"]["huggingface_repo"],
+            f"{task_name}_vocab.json",
+        )
+        print(f"Pushed {task_name}_vocab.json to HuggingFace")
 
 
 def train(config_path: str):
@@ -172,7 +226,7 @@ def train(config_path: str):
         val_metrics, _, _ = evaluate(model, val_loader, criterion, device, plain_vocab)
         scheduler.step(val_metrics["loss"])
 
-        print(f"  train loss: {train_loss:.4f}")
+        print(f"  train loss: {train_loss:.4f} | tf_ratio: {tf_ratio:.2f}")
         print(f"  val   loss: {val_metrics['loss']:.4f} | "
               f"char_acc: {val_metrics['char_acc']:.4f} | "
               f"word_acc: {val_metrics['word_acc']:.4f} | "
@@ -185,6 +239,7 @@ def train(config_path: str):
             "val/word_acc": val_metrics["word_acc"],
             "val/levenshtein": val_metrics["levenshtein"],
             "lr": optimizer.param_groups[0]["lr"],
+            "teacher_forcing_ratio": tf_ratio,
         }, step=epoch)
 
         if val_metrics["loss"] < best_val_loss:
@@ -197,7 +252,7 @@ def train(config_path: str):
             print(f"  ✓ saved checkpoint (val_loss={best_val_loss:.4f})")
 
     finish_wandb()
-    push_to_hf(model, cfg)
+    push_to_hf(model, cfg, plain_vocab, cipher_vocab)
 
     return model, plain_vocab, cipher_vocab, test_loader, cfg
 
@@ -206,15 +261,16 @@ def evaluate_and_save(config_path: str):
     cfg = load_config(config_path)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    plain_vocab = build_plain_vocab(cfg["data"]["plain_file"])
-    cipher_vocab = build_cipher_vocab()
+    task_name = cfg["logging"]["wandb_run_name"]
+
+    # Load vocab from HF or rebuild
+    plain_vocab, cipher_vocab = load_vocab(cfg, task_name)
     _, _, test_loader = get_cipher_dataloaders(cfg, cipher_vocab, plain_vocab)
 
     model = build_seq2seq(cfg, len(cipher_vocab), len(plain_vocab)).to(device)
 
-    # Load from HuggingFace or local checkpoint
+    # Load weights from HuggingFace or local checkpoint
     if cfg["output"].get("huggingface_repo"):
-        task_name = cfg["logging"]["wandb_run_name"]
         load_from_hub(
             model,
             cfg["output"]["huggingface_repo"],
