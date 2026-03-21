@@ -17,7 +17,7 @@ model:
 training:
   epochs: 15
   batch_size: 128
-  learning_rate: 0.001
+  learning_rate: 0.0001
   clip_grad_norm: 1.0
   teacher_forcing_ratio: 0.8
 
