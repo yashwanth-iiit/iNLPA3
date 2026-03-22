@@ -1,0 +1,66 @@
+Model      : RNN
+char_acc   : 0.3430
+word_acc   : 0.1606
+levenshtein: 28.91
+
+── Sample Predictions ──
+TARGET : After I paid Monsieur Prieur for Dandy I brought him home but 
+PREDICT: After I ware Consered Marter the Aarte I sained tor the 
+
+TARGET : How he returned in such a ghastly condition or why I cannot sa
+PREDICT: How is seerined is a ser  a seating theiriens of the Carien  a
+
+TARGET : Dr Lalaurie and I didnt even know he was in the house until th
+PREDICT: Dr Jourines and I a sears that thet to the to the s and the
+
+TARGET : She daubed at her swimming eyes with a lacy handkerchief and s
+PREDICT: She sereed is the perients wase a se a seat continition  and 
+
+TARGET : He must have fallen in with evil companions for he was a simpl
+PREDICT: He wast thes thered of thes thes continient of the a seare  
+
+TARGET : Ruffians must have robbed and beaten him before bringing him b
+PREDICT: Ruriings they thes theeed the someer the searee the seat to the 
+
+TARGET : Such a pitiful end
+PREDICT: Such a canters por
+
+TARGET : Though the slaves dying words about the woman troubled the cor
+PREDICT: Thated the seeeed thise thats theer the seaen and conting 
+
+TARGET : The Lalauries were at the top rung of the social ladder and ev
+PREDICT: The Cartinees thes to the the took of the seared the s and 
+
+TARGET : Moreover runaway slaves frequently got into serious trouble in
+PREDICT: Moreoned sereers conter conterated the thet theired the Co
+
+TARGET : So the verdict was death at the hands of a person or persons u
+PREDICT: So the seerees the sound of the sound an a conter an antere 
+
+TARGET : Once again life went its serene way soirees fox hunts balls an
+PREDICT: Onte teres thes thes the seaing the seating the saree the s
+
+TARGET : The excitement over Brandons bizarre death abated and Madame L
+PREDICT: The continions that Ierients conters withe the Corter So
+
+TARGET : Then on July there occurred another incident which set tongues
+PREDICT: Then In I read thats contered conters contered the seater  o
+
+TARGET : Mrs Victor Dominique socially prominent and a neighbor of the 
+PREDICT: Mrs Aresed Areserent contered thaiciens and a searing  of the Co
+
+TARGET : The manservant Devol and his mistress Delphine Lalaurie were p
+PREDICT: The presention Cores the the contered Mariened Sareered the
+
+TARGET : The girl was not more than
+PREDICT: The wore the the that thee
+
+TARGET : She was nude to the waist and her tumbled abundance of black h
+PREDICT: She the thes is the sones the the seaiens thatines of the 
+
+TARGET : The bleeding girl was tiring fast
+PREDICT: The sontines thet the soured that
+
+TARGET : the coachman and Delphine were gaining on her as she raced dow
+PREDICT: the sorerees the Bearened that theered of the to the s and 
+

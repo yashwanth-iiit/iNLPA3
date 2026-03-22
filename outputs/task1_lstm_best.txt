@@ -1,0 +1,66 @@
+Model      : LSTM
+char_acc   : 0.9461
+word_acc   : 0.8745
+levenshtein: 2.24
+
+── Sample Predictions ──
+TARGET : After I paid Monsieur Prieur for Dandy I brought him home but 
+PREDICT: After I paid Monsieur Prieur for Randy I brought him home but i
+
+TARGET : How he returned in such a ghastly condition or why I cannot sa
+PREDICT: How he returned in such a ghastly condition or why I appnid fo
+
+TARGET : Dr Lalaurie and I didnt even know he was in the house until th
+PREDICT: Dr Lalaurie and I didnt even mnow he was in the fouse and bil
+
+TARGET : She daubed at her swimming eyes with a lacy handkerchief and s
+PREDICT: She daubed at her swimming eyes with a lack handlerchief and s
+
+TARGET : He must have fallen in with evil companions for he was a simpl
+PREDICT: He must have fallen in with evil companions for he was a simpl
+
+TARGET : Ruffians must have robbed and beaten him before bringing him b
+PREDICT: Ruffians must have robbed and beaten him before bringing arm b
+
+TARGET : Such a pitiful end
+PREDICT: Such a pitiful end
+
+TARGET : Though the slaves dying words about the woman troubled the cor
+PREDICT: Though the slaves dying words about the woman troubled the cor
+
+TARGET : The Lalauries were at the top rung of the social ladder and ev
+PREDICT: The Lalauries were at the top rung of the social ladder and wi
+
+TARGET : Moreover runaway slaves frequently got into serious trouble in
+PREDICT: Moreover runaway slaves asersented for into serious trouble in
+
+TARGET : So the verdict was death at the hands of a person or persons u
+PREDICT: So the verdict was death at the hands of a parton or henover d
+
+TARGET : Once again life went its serene way soirees fox hunts balls an
+PREDICT: Once again life went its serene way soirees for hunts balls an
+
+TARGET : The excitement over Brandons bizarre death abated and Madame L
+PREDICT: The excitement over Wrandons bigarre death acated one Mayage D
+
+TARGET : Then on July there occurred another incident which set tongues
+PREDICT: Then on July there occurred another incident which set tongues
+
+TARGET : Mrs Victor Dominique socially prominent and a neighbor of the 
+PREDICT: Mrs Victor Dominisue socially prominent and a neighbor of the 
+
+TARGET : The manservant Devol and his mistress Delphine Lalaurie were p
+PREDICT: The manservant Devol and his mistress Melphine Ralagrie were p
+
+TARGET : The girl was not more than
+PREDICT: The girl was not more than
+
+TARGET : She was nude to the waist and her tumbled abundance of black h
+PREDICT: She was nude to the waist and her timbled abradance of drack h
+
+TARGET : The bleeding girl was tiring fast
+PREDICT: The bleeding girl was tiring mast
+
+TARGET : the coachman and Delphine were gaining on her as she raced dow
+PREDICT: the coachman and Pelphine were gaining on her as the raced bow
+

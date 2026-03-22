@@ -27,4 +27,4 @@ output:
   checkpoint_dir: "checkpoints/task2/bilstm"
   checkpoint_file: "checkpoints/task2/bilstm/best.pt"
   results_file: "outputs/results/task2_bilstm.txt"
-  huggingface_repo: ""
+  huggingface_repo: "yashwanthiiith/inlp-a3"
