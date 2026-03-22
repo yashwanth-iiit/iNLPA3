@@ -3,14 +3,14 @@ data:
   train_split: 0.8
   val_split: 0.1
   test_split: 0.1
-  max_seq_len: 256
+  max_seq_len: 128      # reduced from 256 for speed
 
 model:
   type: "ssm"
   embedding_dim: 128
   hidden_dim: 256
   state_dim: 64
-  num_layers: 4
+  num_layers: 2         # reduced from 4 for speed
   dropout: 0.2
 
 training:

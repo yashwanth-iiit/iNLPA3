@@ -1,11 +1,12 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import math
 
 
-# ── LSTM Cell (reused from task1) ─────────────────────────────────────────────
+# ── LSTM Cell (from scratch) ──────────────────────────────────────────────────
 class LSTMCell(nn.Module):
+    """Single LSTM cell with all 4 gates."""
+
     def __init__(self, input_dim: int, hidden_dim: int):
         super().__init__()
         self.W_ih = nn.Linear(input_dim, 4 * hidden_dim)
@@ -21,12 +22,15 @@ class LSTMCell(nn.Module):
         return h_t, c_t
 
 
-# ── Bidirectional LSTM for MLM ────────────────────────────────────────────────
+# ── Bidirectional LSTM ────────────────────────────────────────────────────────
 class BiLSTMLayer(nn.Module):
     """
-    Bidirectional LSTM — runs one forward LSTM and one backward LSTM,
-    concatenates their outputs at each position.
-    Output dim = 2 * hidden_dim
+    Bidirectional LSTM from scratch.
+    Runs a forward LSTM and a backward LSTM independently,
+    then concatenates their outputs: output_dim = 2 * hidden_dim.
+
+    For multi-layer BiLSTM, each layer takes the concatenated
+    output of the previous layer as input.
     """
 
     def __init__(self, input_dim: int, hidden_dim: int, num_layers: int, dropout: float):
@@ -35,63 +39,53 @@ class BiLSTMLayer(nn.Module):
         self.num_layers = num_layers
         self.dropout = nn.Dropout(dropout)
 
-        # Forward LSTM layers
-        self.fwd_cells = nn.ModuleList([
-            LSTMCell(input_dim if i == 0 else 2 * hidden_dim, hidden_dim)
-            for i in range(num_layers)
-        ])
-        # Backward LSTM layers
-        self.bwd_cells = nn.ModuleList([
-            LSTMCell(input_dim if i == 0 else 2 * hidden_dim, hidden_dim)
-            for i in range(num_layers)
-        ])
+        self.fwd_cells = nn.ModuleList()
+        self.bwd_cells = nn.ModuleList()
+
+        for i in range(num_layers):
+            # First layer takes input_dim, subsequent layers take 2*hidden_dim
+            in_dim = input_dim if i == 0 else 2 * hidden_dim
+            self.fwd_cells.append(LSTMCell(in_dim, hidden_dim))
+            self.bwd_cells.append(LSTMCell(in_dim, hidden_dim))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # x: (batch, seq_len, input_dim)
         batch, seq_len, _ = x.shape
+        current_input = x
 
-        # Initialize hidden states
-        h_fwd = [torch.zeros(batch, self.hidden_dim, device=x.device) for _ in range(self.num_layers)]
-        c_fwd = [torch.zeros(batch, self.hidden_dim, device=x.device) for _ in range(self.num_layers)]
-        h_bwd = [torch.zeros(batch, self.hidden_dim, device=x.device) for _ in range(self.num_layers)]
-        c_bwd = [torch.zeros(batch, self.hidden_dim, device=x.device) for _ in range(self.num_layers)]
-
-        # Forward pass
-        fwd_outputs = []
-        inp = x
         for layer_idx in range(self.num_layers):
-            layer_outputs = []
+            # ── Forward pass ──────────────────────────────────────────────────
+            h_f = torch.zeros(batch, self.hidden_dim, device=x.device)
+            c_f = torch.zeros(batch, self.hidden_dim, device=x.device)
+            fwd_out = []
             for t in range(seq_len):
-                h_fwd[layer_idx], c_fwd[layer_idx] = self.fwd_cells[layer_idx](
-                    inp[:, t, :], h_fwd[layer_idx], c_fwd[layer_idx]
-                )
-                layer_outputs.append(h_fwd[layer_idx])
-            fwd_out = torch.stack(layer_outputs, dim=1)  # (batch, seq_len, hidden)
-            if layer_idx < self.num_layers - 1:
-                inp = fwd_out
+                h_f, c_f = self.fwd_cells[layer_idx](current_input[:, t, :], h_f, c_f)
+                fwd_out.append(h_f)
+            fwd_out = torch.stack(fwd_out, dim=1)       # (batch, seq_len, hidden)
 
-        # Backward pass
-        inp = x
-        for layer_idx in range(self.num_layers):
-            layer_outputs = []
+            # ── Backward pass ─────────────────────────────────────────────────
+            h_b = torch.zeros(batch, self.hidden_dim, device=x.device)
+            c_b = torch.zeros(batch, self.hidden_dim, device=x.device)
+            bwd_out = [None] * seq_len
             for t in reversed(range(seq_len)):
-                h_bwd[layer_idx], c_bwd[layer_idx] = self.bwd_cells[layer_idx](
-                    inp[:, t, :], h_bwd[layer_idx], c_bwd[layer_idx]
-                )
-                layer_outputs.insert(0, h_bwd[layer_idx])
-            bwd_out = torch.stack(layer_outputs, dim=1)  # (batch, seq_len, hidden)
-            if layer_idx < self.num_layers - 1:
-                inp = bwd_out
+                h_b, c_b = self.bwd_cells[layer_idx](current_input[:, t, :], h_b, c_b)
+                bwd_out[t] = h_b
+            bwd_out = torch.stack(bwd_out, dim=1)       # (batch, seq_len, hidden)
 
-        # Concatenate forward and backward outputs
-        output = torch.cat([fwd_out, bwd_out], dim=-1)  # (batch, seq_len, 2*hidden)
-        return output
+            # Concatenate and apply dropout between layers
+            current_input = torch.cat([fwd_out, bwd_out], dim=-1)  # (batch, seq_len, 2*hidden)
+            if layer_idx < self.num_layers - 1:
+                current_input = self.dropout(current_input)
+
+        return current_input  # (batch, seq_len, 2*hidden_dim)
 
 
 class BiLSTMForMLM(nn.Module):
     """
-    Bidirectional LSTM for Masked Language Modeling.
-    Reads full sequence (with masks), predicts original token at each masked position.
+    Bidirectional LSTM for Masked Language Modeling (MLM).
+    Input : sequence with some tokens replaced by <MASK>
+    Output: logits over vocab at every position
+    Loss is only computed at masked positions (label == -100 elsewhere)
     """
 
     def __init__(
@@ -116,92 +110,71 @@ class BiLSTMForMLM(nn.Module):
         return logits
 
 
-# ── SSM (State Space Model) for NWP ──────────────────────────────────────────
+# ── SSM Layer ─────────────────────────────────────────────────────────────────
 class SSMLayer(nn.Module):
     """
-    Simplified S4-inspired State Space Model layer.
+    Simplified diagonal SSM layer inspired by S4/Mamba.
 
-    Continuous-time SSM:
-        x'(t) = A * x(t) + B * u(t)
-        y(t)  = C * x(t) + D * u(t)
-
-    Discretized with step size delta:
+    Discretized state space model:
         x_t = A_bar * x_{t-1} + B_bar * u_t
         y_t = C * x_t + D * u_t
 
-    Where:
-        A_bar = exp(delta * A)
-        B_bar = (A_bar - I) * A^{-1} * B
-
-    We parameterize A as a diagonal matrix for efficiency.
+    A is parameterized as diagonal for efficiency.
+    Delta (step size) is learned per input dimension.
     """
 
     def __init__(self, input_dim: int, state_dim: int):
         super().__init__()
-        self.input_dim = input_dim
         self.state_dim = state_dim
 
-        # SSM parameters
-        # A: diagonal — initialized with HiPPO-like values
-        self.log_A_real = nn.Parameter(torch.zeros(state_dim))
-        self.A_imag = nn.Parameter(torch.randn(state_dim) * 0.01)
-
-        self.B = nn.Parameter(torch.randn(state_dim, input_dim) * 0.01)
-        self.C = nn.Parameter(torch.randn(input_dim, state_dim) * 0.01)
-        self.D = nn.Parameter(torch.ones(input_dim))
-
-        # Log step size (learnable)
-        self.log_delta = nn.Parameter(torch.zeros(input_dim))
+        # Diagonal SSM parameters
+        self.log_A = nn.Parameter(torch.zeros(state_dim))          # log(-A) for stability
+        self.B     = nn.Parameter(torch.randn(state_dim, input_dim) * 0.01)
+        self.C     = nn.Parameter(torch.randn(input_dim, state_dim) * 0.01)
+        self.D     = nn.Parameter(torch.ones(input_dim))
+        self.log_delta = nn.Parameter(torch.zeros(input_dim))      # learnable step size
 
     def forward(self, u: torch.Tensor) -> torch.Tensor:
         # u: (batch, seq_len, input_dim)
-        batch, seq_len, _ = u.shape
+        batch, seq_len, input_dim = u.shape
 
-        # Compute discretization
-        delta = F.softplus(self.log_delta)              # (input_dim,)
+        # Discretize: ZOH method
+        delta = F.softplus(self.log_delta)              # (input_dim,) positive
+        A = -torch.exp(self.log_A)                      # (state_dim,) negative diagonal
 
-        # A is diagonal complex: A = -exp(log_A_real) + i * A_imag
-        A_real = -torch.exp(self.log_A_real)            # (state_dim,)
+        # A_bar = exp(delta * A): (input_dim, state_dim)
+        A_bar = torch.exp(torch.outer(delta, A))        # (input_dim, state_dim)
+        # Use mean across input_dim for state update (diagonal approximation)
+        A_bar_state = A_bar.mean(0)                     # (state_dim,)
 
-        # ZOH discretization for diagonal A:
-        # A_bar = exp(delta * A)
-        # Using real part only for stability
-        delta_A = torch.einsum('d,n->dn', delta, A_real)  # (input_dim, state_dim)
-        A_bar = torch.exp(delta_A)                         # (input_dim, state_dim)
+        # B_bar = delta * B (simplified ZOH): (state_dim, input_dim)
+        B_bar = self.B * delta.unsqueeze(0)             # (state_dim, input_dim)
 
-        # B_bar = delta * B (simplified)
-        delta_B = torch.einsum('d,nd->nd', delta, self.B)  # (state_dim, input_dim) → scaled
-
-        # Scan over sequence
+        # Sequential scan
         x = torch.zeros(batch, self.state_dim, device=u.device)
         outputs = []
 
         for t in range(seq_len):
-            u_t = u[:, t, :]                            # (batch, input_dim)
-            # x = A_bar * x + B_bar * u_t
-            # Using mean of A_bar over input dims for state update
-            A_bar_mean = A_bar.mean(0)                  # (state_dim,)
-            B_u = torch.einsum('nd,bd->bn', delta_B, u_t)  # (batch, state_dim)
-            x = x * A_bar_mean.unsqueeze(0) + B_u
-            # y = C * x + D * u_t
-            y = torch.einsum('dn,bn->bd', self.C, x) + self.D * u_t
+            u_t = u[:, t, :]                                        # (batch, input_dim)
+            Bu  = torch.einsum('ni,bi->bn', B_bar, u_t)             # (batch, state_dim)
+            x   = x * A_bar_state.unsqueeze(0) + Bu                 # (batch, state_dim)
+            y   = torch.einsum('in,bn->bi', self.C, x) + self.D * u_t  # (batch, input_dim)
             outputs.append(y)
 
         return torch.stack(outputs, dim=1)              # (batch, seq_len, input_dim)
 
 
 class SSMBlock(nn.Module):
-    """SSM layer with residual connection, layer norm and dropout."""
+    """SSM with pre-norm residual connection, GELU activation and dropout."""
 
     def __init__(self, hidden_dim: int, state_dim: int, dropout: float):
         super().__init__()
         self.norm = nn.LayerNorm(hidden_dim)
-        self.ssm = SSMLayer(hidden_dim, state_dim)
+        self.ssm  = SSMLayer(hidden_dim, state_dim)
+        self.act  = nn.GELU()
         self.dropout = nn.Dropout(dropout)
-        self.act = nn.GELU()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        # Pre-norm residual
         residual = x
         x = self.norm(x)
         x = self.ssm(x)
@@ -212,8 +185,10 @@ class SSMBlock(nn.Module):
 
 class SSMForNWP(nn.Module):
     """
-    Stacked SSM blocks for Next Word/Character Prediction.
-    Causal model — predicts token at position t+1 given 0..t.
+    Stacked SSM blocks for Next Character Prediction (NWP).
+    Causal: given characters 0..t, predict character at t+1.
+    Input : tokens[0..n-1]
+    Target: tokens[1..n]
     """
 
     def __init__(
@@ -226,48 +201,42 @@ class SSMForNWP(nn.Module):
         dropout: float,
     ):
         super().__init__()
-        self.embedding = nn.Embedding(vocab_size, embedding_dim, padding_idx=0)
+        self.embedding  = nn.Embedding(vocab_size, embedding_dim, padding_idx=0)
         self.input_proj = nn.Linear(embedding_dim, hidden_dim)
-        self.dropout = nn.Dropout(dropout)
-
-        self.blocks = nn.ModuleList([
-            SSMBlock(hidden_dim, state_dim, dropout)
-            for _ in range(num_layers)
+        self.dropout    = nn.Dropout(dropout)
+        self.blocks     = nn.ModuleList([
+            SSMBlock(hidden_dim, state_dim, dropout) for _ in range(num_layers)
         ])
-
-        self.norm = nn.LayerNorm(hidden_dim)
-        self.fc_out = nn.Linear(hidden_dim, vocab_size)
+        self.norm    = nn.LayerNorm(hidden_dim)
+        self.fc_out  = nn.Linear(hidden_dim, vocab_size)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # x: (batch, seq_len)
-        embedded = self.dropout(self.embedding(x))      # (batch, seq_len, emb_dim)
-        hidden = self.input_proj(embedded)              # (batch, seq_len, hidden_dim)
-
+        h = self.dropout(self.embedding(x))             # (batch, seq_len, emb_dim)
+        h = self.input_proj(h)                          # (batch, seq_len, hidden_dim)
         for block in self.blocks:
-            hidden = block(hidden)
-
-        hidden = self.norm(hidden)
-        logits = self.fc_out(hidden)                    # (batch, seq_len, vocab_size)
-        return logits
+            h = block(h)
+        h = self.norm(h)
+        return self.fc_out(h)                           # (batch, seq_len, vocab_size)
 
 
 # ── Model factories ───────────────────────────────────────────────────────────
 def build_bilstm(cfg: dict, vocab_size: int) -> BiLSTMForMLM:
     return BiLSTMForMLM(
-        vocab_size=vocab_size,
-        embedding_dim=cfg["model"]["embedding_dim"],
-        hidden_dim=cfg["model"]["hidden_dim"],
-        num_layers=cfg["model"]["num_layers"],
-        dropout=cfg["model"]["dropout"],
+        vocab_size    = vocab_size,
+        embedding_dim = cfg["model"]["embedding_dim"],
+        hidden_dim    = cfg["model"]["hidden_dim"],
+        num_layers    = cfg["model"]["num_layers"],
+        dropout       = cfg["model"]["dropout"],
     )
 
 
 def build_ssm(cfg: dict, vocab_size: int) -> SSMForNWP:
     return SSMForNWP(
-        vocab_size=vocab_size,
-        embedding_dim=cfg["model"]["embedding_dim"],
-        hidden_dim=cfg["model"]["hidden_dim"],
-        state_dim=cfg["model"]["state_dim"],
-        num_layers=cfg["model"]["num_layers"],
-        dropout=cfg["model"]["dropout"],
+        vocab_size    = vocab_size,
+        embedding_dim = cfg["model"]["embedding_dim"],
+        hidden_dim    = cfg["model"]["hidden_dim"],
+        state_dim     = cfg["model"]["state_dim"],
+        num_layers    = cfg["model"]["num_layers"],
+        dropout       = cfg["model"]["dropout"],
     )

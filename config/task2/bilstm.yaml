@@ -3,7 +3,7 @@ data:
   train_split: 0.8
   val_split: 0.1
   test_split: 0.1
-  max_seq_len: 256
+  max_seq_len: 128      # reduced from 256 for speed
   mask_prob: 0.15
 
 model:

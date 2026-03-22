@@ -1,6 +1,7 @@
 import os
 import json
 import math
+import random
 import shutil
 import yaml
 import torch
@@ -11,9 +12,13 @@ from src.utils.dataset import (
     build_plain_vocab,
     get_lm_dataloaders,
     PAD_IDX,
+    MASK_IDX,
 )
 from src.utils.checkpoints import save_checkpoint, load_checkpoint
-from src.utils.hf_wandb import init_wandb, log_wandb, finish_wandb, save_and_push, load_from_hub, push_to_hub
+from src.utils.hf_wandb import (
+    init_wandb, log_wandb, finish_wandb,
+    save_and_push, load_from_hub, push_to_hub,
+)
 from src.task2.models import build_bilstm, build_ssm
 
 
@@ -23,109 +28,125 @@ def load_config(config_path: str) -> dict:
 
 
 def compute_perplexity(loss: float) -> float:
-    """Perplexity = exp(cross_entropy_loss)."""
-    return math.exp(min(loss, 100))  # cap to avoid overflow
+    return math.exp(min(loss, 100))
 
 
+# ── Training epochs ───────────────────────────────────────────────────────────
 def train_epoch_mlm(model, loader, optimizer, criterion, device, clip):
-    """Training epoch for BiLSTM MLM."""
     model.train()
     total_loss = 0
-
     for input_ids, labels in tqdm(loader, desc="  train", leave=False):
-        input_ids = input_ids.to(device)
-        labels = labels.to(device)
-
+        input_ids, labels = input_ids.to(device), labels.to(device)
         optimizer.zero_grad()
-        logits = model(input_ids)                       # (batch, seq_len, vocab)
-
-        # Only compute loss on masked positions (labels != -100)
-        logits_flat = logits.view(-1, logits.shape[-1])
-        labels_flat = labels.view(-1)
-        loss = criterion(logits_flat, labels_flat)
-
+        logits = model(input_ids)
+        loss = criterion(logits.view(-1, logits.shape[-1]), labels.view(-1))
         loss.backward()
         nn.utils.clip_grad_norm_(model.parameters(), clip)
         optimizer.step()
         total_loss += loss.item()
-
     return total_loss / len(loader)
 
 
 def train_epoch_nwp(model, loader, optimizer, criterion, device, clip):
-    """Training epoch for SSM NWP."""
     model.train()
     total_loss = 0
-
     for input_ids, target_ids in tqdm(loader, desc="  train", leave=False):
-        input_ids = input_ids.to(device)
-        target_ids = target_ids.to(device)
-
+        input_ids, target_ids = input_ids.to(device), target_ids.to(device)
         optimizer.zero_grad()
-        logits = model(input_ids)                       # (batch, seq_len, vocab)
-
-        logits_flat = logits.view(-1, logits.shape[-1])
-        targets_flat = target_ids.view(-1)
-        loss = criterion(logits_flat, targets_flat)
-
+        logits = model(input_ids)
+        loss = criterion(logits.view(-1, logits.shape[-1]), target_ids.view(-1))
         loss.backward()
         nn.utils.clip_grad_norm_(model.parameters(), clip)
         optimizer.step()
         total_loss += loss.item()
-
     return total_loss / len(loader)
 
 
+# ── Evaluation ────────────────────────────────────────────────────────────────
 @torch.no_grad()
-def evaluate_mlm(model, loader, criterion, device):
-    """Evaluate BiLSTM MLM."""
+def evaluate_mlm(model, loader, criterion, device, vocab, num_samples=5):
     model.eval()
     total_loss = 0
+    samples = []
 
     for input_ids, labels in tqdm(loader, desc="  eval ", leave=False):
-        input_ids = input_ids.to(device)
-        labels = labels.to(device)
-
+        input_ids, labels = input_ids.to(device), labels.to(device)
         logits = model(input_ids)
-        logits_flat = logits.view(-1, logits.shape[-1])
-        labels_flat = labels.view(-1)
-        loss = criterion(logits_flat, labels_flat)
+        loss = criterion(logits.view(-1, logits.shape[-1]), labels.view(-1))
         total_loss += loss.item()
 
+        # Collect sample predictions
+        if len(samples) < num_samples:
+            preds = logits.argmax(dim=-1)               # (batch, seq_len)
+            for b in range(min(input_ids.shape[0], num_samples - len(samples))):
+                inp_tokens  = input_ids[b].tolist()
+                label_tokens = labels[b].tolist()
+                pred_tokens  = preds[b].tolist()
+
+                inp_str  = "".join(vocab.idx2token.get(i, "") for i in inp_tokens
+                                   if i not in (0, 1, 2))
+                # Show what was masked vs predicted
+                masked_positions = [i for i, l in enumerate(label_tokens) if l != -100]
+                target_chars = "".join(vocab.idx2token.get(label_tokens[i], "?")
+                                       for i in masked_positions)
+                pred_chars   = "".join(vocab.idx2token.get(pred_tokens[i], "?")
+                                       for i in masked_positions)
+                samples.append((inp_str[:80], target_chars[:40], pred_chars[:40]))
+
     avg_loss = total_loss / len(loader)
-    return avg_loss, compute_perplexity(avg_loss)
+    return avg_loss, compute_perplexity(avg_loss), samples
 
 
 @torch.no_grad()
-def evaluate_nwp(model, loader, criterion, device):
-    """Evaluate SSM NWP."""
+def evaluate_nwp(model, loader, criterion, device, vocab, num_samples=5):
     model.eval()
     total_loss = 0
+    samples = []
 
     for input_ids, target_ids in tqdm(loader, desc="  eval ", leave=False):
-        input_ids = input_ids.to(device)
-        target_ids = target_ids.to(device)
-
+        input_ids, target_ids = input_ids.to(device), target_ids.to(device)
         logits = model(input_ids)
-        logits_flat = logits.view(-1, logits.shape[-1])
-        targets_flat = target_ids.view(-1)
-        loss = criterion(logits_flat, targets_flat)
+        loss = criterion(logits.view(-1, logits.shape[-1]), target_ids.view(-1))
         total_loss += loss.item()
 
+        # Collect sample predictions
+        if len(samples) < num_samples:
+            preds = logits.argmax(dim=-1)
+            for b in range(min(input_ids.shape[0], num_samples - len(samples))):
+                inp_str = "".join(vocab.idx2token.get(i, "") for i in input_ids[b].tolist()
+                                  if i not in (0, 1, 2))
+                tgt_str = "".join(vocab.idx2token.get(i, "") for i in target_ids[b].tolist()
+                                  if i not in (0, 1, 2))
+                prd_str = "".join(vocab.idx2token.get(i, "") for i in preds[b].tolist()
+                                  if i not in (0, 1, 2))
+                samples.append((inp_str[:80], tgt_str[:80], prd_str[:80]))
+
     avg_loss = total_loss / len(loader)
-    return avg_loss, compute_perplexity(avg_loss)
+    return avg_loss, compute_perplexity(avg_loss), samples
 
 
-def save_results(cfg, metrics, model_type):
-    """Save metrics to results file and copy to kaggle output."""
+# ── Save results ──────────────────────────────────────────────────────────────
+def save_results(cfg, metrics, model_type, samples):
     results_file = cfg["output"]["results_file"]
     os.makedirs(os.path.dirname(results_file), exist_ok=True)
 
+    task = "MLM" if model_type == "bilstm" else "NWP"
     with open(results_file, "w") as f:
         f.write(f"Model      : {model_type.upper()}\n")
-        f.write(f"Task       : {'MLM' if model_type == 'bilstm' else 'NWP'}\n")
+        f.write(f"Task       : {task}\n")
         f.write(f"val_loss   : {metrics['val_loss']:.4f}\n")
-        f.write(f"perplexity : {metrics['perplexity']:.4f}\n")
+        f.write(f"perplexity : {metrics['perplexity']:.4f}\n\n")
+        f.write("── Sample Predictions ──\n")
+        if model_type == "bilstm":
+            for inp, target, pred in samples:
+                f.write(f"INPUT  : {inp}\n")
+                f.write(f"MASKED : {target}\n")
+                f.write(f"PREDICT: {pred}\n\n")
+        else:
+            for inp, target, pred in samples:
+                f.write(f"INPUT  : {inp}\n")
+                f.write(f"TARGET : {target}\n")
+                f.write(f"PREDICT: {pred}\n\n")
 
     print(f"Results saved to {results_file}")
 
@@ -135,14 +156,15 @@ def save_results(cfg, metrics, model_type):
         print(f"Results copied to {dest}")
 
 
+# ── HuggingFace push ──────────────────────────────────────────────────────────
 def push_to_hf(model, cfg, vocab=None):
-    """Push model weights and vocab to HuggingFace."""
     if not cfg["output"].get("huggingface_repo"):
         return
 
     task_name = cfg["logging"]["wandb_run_name"]
     os.makedirs(cfg["output"]["checkpoint_dir"], exist_ok=True)
 
+    # Push model weights
     filename = f"{task_name}_best.pt"
     save_and_push(
         model,
@@ -152,6 +174,7 @@ def push_to_hf(model, cfg, vocab=None):
     )
     print(f"Pushed {filename} to HuggingFace")
 
+    # Push vocab
     if vocab is not None:
         vocab_path = os.path.join(
             cfg["output"]["checkpoint_dir"], f"{task_name}_vocab.json"
@@ -166,48 +189,43 @@ def push_to_hf(model, cfg, vocab=None):
         print(f"Pushed {task_name}_vocab.json to HuggingFace")
 
 
+# ── Main train function ───────────────────────────────────────────────────────
 def train(config_path: str, model_type: str):
-    """Shared training function for both BiLSTM and SSM."""
     cfg = load_config(config_path)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Device: {device}")
 
-    # ── Vocab ──────────────────────────────────────────────────────────────────
+    # Vocab
     vocab = build_plain_vocab(cfg["data"]["plain_file"])
     print(f"Vocab size: {len(vocab)}")
 
-    # ── Data ───────────────────────────────────────────────────────────────────
+    # Data
     task = "mlm" if model_type == "bilstm" else "nwp"
     train_loader, val_loader, test_loader = get_lm_dataloaders(cfg, vocab, task)
     print(f"Train batches: {len(train_loader)} | Val: {len(val_loader)} | Test: {len(test_loader)}")
 
-    # ── Model ──────────────────────────────────────────────────────────────────
+    # Model
     if model_type == "bilstm":
         model = build_bilstm(cfg, len(vocab)).to(device)
+        criterion = nn.CrossEntropyLoss(ignore_index=-100)
     else:
         model = build_ssm(cfg, len(vocab)).to(device)
+        criterion = nn.CrossEntropyLoss(ignore_index=PAD_IDX)
 
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"Model params: {total_params:,}")
 
-    # ── Training setup ─────────────────────────────────────────────────────────
+    # Optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=cfg["training"]["learning_rate"])
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=3, factor=0.5)
 
-    # MLM uses -100 to ignore non-masked positions
-    if model_type == "bilstm":
-        criterion = nn.CrossEntropyLoss(ignore_index=-100)
-    else:
-        criterion = nn.CrossEntropyLoss(ignore_index=PAD_IDX)
-
-    # ── WandB ──────────────────────────────────────────────────────────────────
+    # WandB
     init_wandb(
         project=cfg["logging"]["wandb_project"],
         config=cfg,
         name=cfg["logging"]["wandb_run_name"],
     )
 
-    # ── Training loop ──────────────────────────────────────────────────────────
     best_val_loss = float("inf")
     os.makedirs(cfg["output"]["checkpoint_dir"], exist_ok=True)
 
@@ -219,13 +237,13 @@ def train(config_path: str, model_type: str):
                 model, train_loader, optimizer, criterion, device,
                 cfg["training"]["clip_grad_norm"],
             )
-            val_loss, val_ppl = evaluate_mlm(model, val_loader, criterion, device)
+            val_loss, val_ppl, _ = evaluate_mlm(model, val_loader, criterion, device, vocab)
         else:
             train_loss = train_epoch_nwp(
                 model, train_loader, optimizer, criterion, device,
                 cfg["training"]["clip_grad_norm"],
             )
-            val_loss, val_ppl = evaluate_nwp(model, val_loader, criterion, device)
+            val_loss, val_ppl, _ = evaluate_nwp(model, val_loader, criterion, device, vocab)
 
         scheduler.step(val_loss)
         train_ppl = compute_perplexity(train_loss)
@@ -251,10 +269,10 @@ def train(config_path: str, model_type: str):
 
     finish_wandb()
     push_to_hf(model, cfg, vocab)
-
     return model, vocab, test_loader, cfg
 
 
+# ── Evaluate and save ─────────────────────────────────────────────────────────
 def evaluate_and_save(config_path: str, model_type: str):
     cfg = load_config(config_path)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -270,7 +288,7 @@ def evaluate_and_save(config_path: str, model_type: str):
         model = build_ssm(cfg, len(vocab)).to(device)
         criterion = nn.CrossEntropyLoss(ignore_index=PAD_IDX)
 
-    # Load from HuggingFace or local
+    # Load checkpoint
     if cfg["output"].get("huggingface_repo"):
         task_name = cfg["logging"]["wandb_run_name"]
         load_from_hub(
@@ -283,13 +301,18 @@ def evaluate_and_save(config_path: str, model_type: str):
         load_checkpoint(cfg["output"]["checkpoint_file"], model, device=str(device))
 
     if model_type == "bilstm":
-        val_loss, val_ppl = evaluate_mlm(model, test_loader, criterion, device)
+        val_loss, val_ppl, samples = evaluate_mlm(
+            model, test_loader, criterion, device, vocab, num_samples=10
+        )
     else:
-        val_loss, val_ppl = evaluate_nwp(model, test_loader, criterion, device)
+        val_loss, val_ppl, samples = evaluate_nwp(
+            model, test_loader, criterion, device, vocab, num_samples=10
+        )
 
     print("\n── Test Results ──────────────────────────────")
-    print(f"  loss      : {val_loss:.4f}")
-    print(f"  perplexity: {val_ppl:.4f}")
+    print(f"  val_loss   : {val_loss:.4f}")
+    print(f"  perplexity : {val_ppl:.4f}")
 
-    save_results(cfg, {"val_loss": val_loss, "perplexity": val_ppl}, model_type)
-    return {"val_loss": val_loss, "perplexity": val_ppl}
+    metrics = {"val_loss": val_loss, "perplexity": val_ppl}
+    save_results(cfg, metrics, model_type, samples)
+    return metrics
