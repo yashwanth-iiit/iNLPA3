@@ -1,0 +1,46 @@
+Model      : SSM
+Task       : NWP
+val_loss   : 1.6812
+perplexity : 5.3718
+
+── Sample Predictions ──
+INPUT  : After I paid Monsieur Prieur for Dandy I brought him home but he was ill at ease
+TARGET : After I paid Monsieur Prieur for Dandy I brought him home but he was ill at ease
+PREDICT: Tnter t wrrn tart s r aron siaor tent  w weought tes aewe oet te was anlut  txct
+
+INPUT  : How he returned in such a ghastly condition or why I cannot say
+TARGET : How he returned in such a ghastly condition or why I cannot say
+PREDICT: Tewewe weaurn d tn toch ansret  y tontition of thi t wan et tei rr              
+
+INPUT  : Dr Lalaurie and I didnt even know he was in the house until the night of our bal
+TARGET : Dr Lalaurie and I didnt even know he was in the house until the night of our bal
+PREDICT: Teiainlnsensand t wed t txen tnow ta was an the sause andil the seght tf ttr tec
+
+INPUT  : She daubed at her swimming eyes with a lacy handkerchief and said with obvious e
+TARGET : She daubed at her swimming eyes with a lacy handkerchief and said with obvious e
+PREDICT: Toe wiyglr tn te  ttineeng txes thth t sark tavg ed eens tnd toid tith tntious a
+
+INPUT  : He must have fallen in with evil companions for he was a simple youth and quite 
+TARGET : He must have fallen in with evil companions for he was a simple youth and quite 
+PREDICT: Te wast tave tocl dgtn thth txeduaonplnyen  oor te was a semple oou h t d tuate 
+
+INPUT  : Ruffians must have robbed and beaten him before bringing him back to our house t
+TARGET : Ruffians must have robbed and beaten him before bringing him back to our house t
+PREDICT: Tesfectt aact teve teoeed tnd teet r tes aetore teong ng tim aeck oh tnt tawse a
+
+INPUT  : Such a pitiful end
+TARGET : Such a pitiful end
+PREDICT: Toch ansrt cil txt tt                                                           
+
+INPUT  : Though the slaves dying words about the woman troubled the coroners panel Dandys
+TARGET : Though the slaves dying words about the woman troubled the coroners panel Dandys
+PREDICT: Thesgh the state  ti ng thuk  anout the saren thaugle  the sonnle   orrsryoent  
+
+INPUT  : The Lalauries were at the top rung of the social ladder and even a jury didnt fe
+TARGET : The Lalauries were at the top rung of the social ladder and even a jury didnt fe
+PREDICT: The sonans ns ahre a  the shoetenn tf the stmial aane d tnd txer t sosy tes t to
+
+INPUT  : Moreover runaway slaves frequently got into serious trouble in New Orleans dives
+TARGET : Moreover runaway slaves frequently got into serious trouble in New Orleans dives
+PREDICT: Tase ner ten lay toote  tooeuencly tr  tn o teevous ahaunle tn tow Yrldrs  aese 
+
