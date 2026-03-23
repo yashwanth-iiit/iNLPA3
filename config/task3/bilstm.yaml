@@ -8,18 +8,18 @@ data:
   train_split: 0.8
   val_split: 0.1
   test_split: 0.1
-  max_plain_len: 256
-  max_cipher_len: 512
+  max_plain_len: 64
+  max_cipher_len: 128
 
 decryption:
   model_type: "lstm"
   checkpoint: "checkpoints/task1/lstm/best.pt"
-  huggingface_repo: ""
+  huggingface_repo: "yashwanthiiith/inlp-a3"
 
 language_model:
   model_type: "bilstm"
   checkpoint: "checkpoints/task2/bilstm/best.pt"
-  huggingface_repo: ""
+  huggingface_repo: "yashwanthiiith/inlp-a3"
 
 logging:
   wandb_project: "inlp-a3"

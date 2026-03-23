@@ -1,0 +1,46 @@
+Model      : BILSTM
+Task       : MLM
+val_loss   : 0.1197
+perplexity : 1.1272
+
+── Sample Predictions ──
+INPUT  : A<MASK>ter <MASK> pai<MASK> Monsie<MASK><MASK> <MASK>rieur<MASK>f<MASK>r<MASK>Da
+MASKED : fIdurP o bmhewye<PAD><PAD><PAD><PAD><PAD
+PREDICT: fadrtF o bmhywye<PAD><PAD><PAD><PAD><PAD
+
+INPUT  : Ho<MASK><MASK>he retur<MASK><MASK>d i<MASK> such<MASK>a <MASK>hastly <MASK>ondi<
+MASKED : w nen gct nn<PAD><PAD><PAD><PAD><PAD><PA
+PREDICT: wtnen cct nn<PAD><PAD><PAD><PAD><PAD><PA
+
+INPUT  : Dr Lalauri<MASK><MASK>and I di<MASK>n<MASK> even know <MASK>e wa<MASK> in the ho
+MASKED : e dthsu wnh<PAD><PAD><PAD><PAD><PAD><PAD
+PREDICT: a dthsu wnh<PAD><PAD><PAD><PAD><PAD><PAD
+
+INPUT  : She da<MASK>bed at her s<MASK>imming eyes w<MASK>th<MASK>a<MASK>l<MASK>cy<MASK>h
+MASKED : uwi  a r iwtmb<PAD><PAD><PAD><PAD><PAD><
+PREDICT: mwi li   iwtmb<PAD><PAD><PAD><PAD><PAD><
+
+INPUT  : He<MASK>mu<MASK>t have f<MASK>llen in wi<MASK>h ev<MASK>l co<MASK><MASK><MASK>ni
+MASKED :  satimpansfiu rdexpec<PAD><PAD><PAD><PAD
+PREDICT:  sitimminsfiu rd epet<PAD><PAD><PAD><PAD
+
+INPUT  : Ruffians<MASK>must h<MASK>ve r<MASK>bbed <MASK>n<MASK> beat<MASK>n hi<MASK> <MAS
+MASKED :  aoadembogg orso<PAD><PAD><PAD><PAD><PAD
+PREDICT:  aoadosbogg btso<PAD><PAD><PAD><PAD><PAD
+
+INPUT  : Such a pitifu<MASK> e<MASK><MASK>
+MASKED : lnd<PAD><PAD><PAD><PAD><PAD><PAD><PAD><P
+PREDICT: lad<PAD><PAD><PAD><PAD><PAD><PAD><PAD><P
+
+INPUT  : Though the <MASK>lave<MASK> d<MASK>in<MASK> w<MASK>r<MASK>s a<MASK>o<MASK>t <MAS
+MASKED : ssygodbuthabeto n Dysaugaan
+PREDICT: slogokbuthabeth ry  aougion
+
+INPUT  : The L<MASK>lauries were <MASK><MASK> the<MASK>t<MASK>p r<MASK>ng of t<MASK>e <MA
+MASKED : aat ouhsceeu s l
+PREDICT: ein oihsceeu pmc
+
+INPUT  : <MASK>ore<MASK>ver runaway sl<MASK>ves f<MASK>equ<MASK>ntly got<MASK><MASK>nt<MA
+MASKED : Moare ioeoeOas<PAD><PAD><PAD><PAD><PAD><
+PREDICT: Moare eoeoeAar<PAD><PAD><PAD><PAD><PAD><
+
