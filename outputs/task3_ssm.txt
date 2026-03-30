@@ -1,0 +1,163 @@
+Task 3 — Decryption + SSM Correction
+============================================================
+
+Noise level: cipher_01
+----------------------------------------
+Decrypt only:
+  char_acc=0.5741 word_acc=0.3657 lev=34.09 bleu=0.4017 rouge=0.7450
+Decrypt + ssm:
+  char_acc=0.5347 word_acc=0.1949 lev=36.77 bleu=0.3476 rouge=0.6915
+
+Sample predictions (decrypt only):
+  TARGET : After I paid Monsieur Prieur for Dandy I brought him home but he was ill at ease and ran away the same night
+  PREDICT: After I paid gonsieur Prisor Sor Randy I brought eis home but 
+
+  TARGET : How he returned in such a ghastly condition or why I cannot say
+  PREDICT: How Iu retryned in such a ghastlu conditwod Mr why I appnid of
+
+  TARGET : Dr Lalaurie and I didnt even know he was in the house until the night of our ball when he came down the stairs
+  PREDICT: Dr DDrruAie and I ddhlt even mpom he mas in the fouge and tho
+
+  TARGET : She daubed at her swimming eyes with a lacy handkerchief and said with obvious emotion That poor boy
+  PREDICT: She daubed at her swieying eyes tith a lack handlerchief and si
+
+  TARGET : He must have fallen in with evil companions for he was a simple youth and quite trusting and inexperienced
+  PREDICT: He mnft hade fallen in with evil compactons for wf was a simpl
+
+Sample predictions (decrypt + ssm):
+  TARGET : After I paid Monsieur Prieur for Dandy I brought him home but he was ill at ease and ran away the same night
+  PREDICT: After I pain gonsieus Prisor Sor Randy I brought eis home but 
+
+  TARGET : How he returned in such a ghastly condition or why I cannot say
+  PREDICT: Hew I  retuy ed in such a ghast u conditier Mr why I appnideof
+
+  TARGET : Dr Lalaurie and I didnt even know he was in the house until the night of our ball when he came down the stairs
+  PREDICT: Dr DDr uAie and I ddhlt even mpom he mas in the fough and the
+
+  TARGET : She daubed at her swimming eyes with a lacy handkerchief and said with obvious emotion That poor boy
+  PREDICT: She daugld at her swiey ng eyes thml a lack hand er hinf and si
+
+  TARGET : He must have fallen in with evil companions for he was a simple youth and quite trusting and inexperienced
+  PREDICT: He mnft had  fall d in whth eved compantors for wfowas a simpl
+
+
+Noise level: cipher_02
+----------------------------------------
+Decrypt only:
+  char_acc=0.5131 word_acc=0.2780 lev=37.61 bleu=0.3324 rouge=0.6850
+Decrypt + ssm:
+  char_acc=0.4780 word_acc=0.1540 lev=40.00 bleu=0.2917 rouge=0.6383
+
+Sample predictions (decrypt only):
+  TARGET : After I paid Monsieur Prieur for Dandy I brought him home but he was ill at ease and ran away the same night
+  PREDICT: After I paCd Monsluub ofieux mos Ranky I broubhc fim home mun i
+
+  TARGET : How he returned in such a ghastly condition or why I cannot say
+  PREDICT: How he ratfrnsy bn such a ghrmtly condition or why I amoSpo f
+
+  TARGET : Dr Lalaurie and I didnt even know he was in the house until the night of our ball when he came down the stairs
+  PREDICT: Dr YayIuree apd I didnt evck Tnow he aub in the fouse and who
+
+  TARGET : She daubed at her swimming eyes with a lacy handkerchief and said with obvious emotion That poor boy
+  PREDICT: She iaxbld at her Revumive eyes wikh a Sucy imadoerttuen wns o
+
+  TARGET : He must have fallen in with evil companions for he was a simple youth and quite trusting and inexperienced
+  PREDICT: He muse haji fallen hn wich efil rompanions for he wan a sizpp
+
+Sample predictions (decrypt + ssm):
+  TARGET : After I paid Monsieur Prieur for Dandy I brought him home but he was ill at ease and ran away the same night
+  PREDICT: After I paCd Monsluub of eux mostRanky I broughc fim home mun i
+
+  TARGET : How he returned in such a ghastly condition or why I cannot say
+  PREDICT: Hew he retfrns  bn such a ghrmtle condition of why I am Sponf
+
+  TARGET : Dr Lalaurie and I didnt even know he was in the house until the night of our ball when he came down the stairs
+  PREDICT: Dr Yay nr   app I did t evek Tnow he autlin the fouse and who
+
+  TARGET : She daubed at her swimming eyes with a lacy handkerchief and said with obvious emotion That poor boy
+  PREDICT: She iaxble at her Revuline eyes wite a Such impdeerttue  wns o
+
+  TARGET : He must have fallen in with evil companions for he was a simple youth and quite trusting and inexperienced
+  PREDICT: He must hajo fall d hn wich effl rempanion  for he wasta sizep
+
+
+Noise level: cipher_03
+----------------------------------------
+Decrypt only:
+  char_acc=0.4634 word_acc=0.2231 lev=40.59 bleu=0.2805 rouge=0.6367
+Decrypt + ssm:
+  char_acc=0.4324 word_acc=0.1278 lev=42.64 bleu=0.2496 rouge=0.5955
+
+Sample predictions (decrypt only):
+  TARGET : After I paid Monsieur Prieur for Dandy I brought him home but he was ill at ease and ran away the same night
+  PREDICT: After I padd Monniqy wriels for oSndy I brikght Aom hese wno i
+
+  TARGET : How he returned in such a ghastly condition or why I cannot say
+  PREDICT: How he returned h hrch f itystll ynonituon Ar why I amand tas
+
+  TARGET : Dr Lalaurie and I didnt even know he was in the house until the night of our ball when he came down the stairs
+  PREDICT: Dr Lalaurge and I didnt fvid ynoo he wuy in the foung and leo
+
+  TARGET : She daubed at her swimming eyes with a lacy handkerchief and said with obvious emotion That poor boy
+  PREDICT: She iaubed ft hh  weipmidg does payn p p cmcy putroeftien  aas 
+
+  TARGET : He must have fallen in with evil companions for he was a simple youth and quite trusting and inexperienced
+  PREDICT: He must wlv  aall n miim essn companioum for he wnt a demple 
+
+Sample predictions (decrypt + ssm):
+  TARGET : After I paid Monsieur Prieur for Dandy I brought him home but he was ill at ease and ran away the same night
+  PREDICT: After I padd Monniqu writls for oSndy I brikeht Aom he   wno i
+
+  TARGET : How he returned in such a ghastly condition or why I cannot say
+  PREDICT: Hew he returned h hrchof it   eeeyoonityrn Ar why I am nd thk
+
+  TARGET : Dr Lalaurie and I didnt even know he was in the house until the night of our ball when he came down the stairs
+  PREDICT: Dr Lalaurge and I did t fvideyooo he wuy in the found and leo
+
+  TARGET : She daubed at her swimming eyes with a lacy handkerchief and said with obvious emotion That poor boy
+  PREDICT: She iautld fthhh  weipmedgedoes payn p p cmcy put oeft en  aast
+
+  TARGET : He must have fallen in with evil companions for he was a simple youth and quite trusting and inexperienced
+  PREDICT: He must wlve aall n miim estn companyons for he wnt a demple 
+
+
+Noise level: cipher_04
+----------------------------------------
+Decrypt only:
+  char_acc=0.4207 word_acc=0.1850 lev=43.04 bleu=0.2406 rouge=0.5948
+Decrypt + ssm:
+  char_acc=0.3933 word_acc=0.1096 lev=44.81 bleu=0.2162 rouge=0.5598
+
+Sample predictions (decrypt only):
+  TARGET : After I paid Monsieur Prieur for Dandy I brought him home but he was ill at ease and ran away the same night
+  PREDICT: After I paiv scnrfchr Puizzz ofr Sandy a bieumet shu honk sTA 
+
+  TARGET : How he returned in such a ghastly condition or why I cannot say
+  PREDICT: How he retufdex in surh a fhastim coniomion hr way I casing si
+
+  TARGET : Dr Lalaurie and I didnt even know he was in the house until the night of our ball when he came down the stairs
+  PREDICT: Dr LmmOrrrh snd I ddant exen Jntw us was An the bouse and bil
+
+  TARGET : She daubed at her swimming eyes with a lacy handkerchief and said with obvious emotion That poor boy
+  PREDICT: She dgubed at hel suppying whks jonn I l prns panctngticll by s
+
+  TARGET : He must have fallen in with evil companions for he was a simple youth and quite trusting and inexperienced
+  PREDICT: He mlst jave faolmn On wilh eval pompanions Mrr we was t oilsl
+
+Sample predictions (decrypt + ssm):
+  TARGET : After I paid Monsieur Prieur for Dandy I brought him home but he was ill at ease and ran away the same night
+  PREDICT: After I painescnrfuhr Puizzz of  Sandy a bieum n shu honk sTA 
+
+  TARGET : How he returned in such a ghastly condition or why I cannot say
+  PREDICT: Hew he returfex in surh a fhastim conionion hr was I caseng si
+
+  TARGET : Dr Lalaurie and I didnt even know he was in the house until the night of our ball when he came down the stairs
+  PREDICT: Dr LmmOrrrh snd I ddant exen Jntw us was An the bouse and bel
+
+  TARGET : She daubed at her swimming eyes with a lacy handkerchief and said with obvious emotion That poor boy
+  PREDICT: She dguber at hel suppy ng whks jonn I l prns pancengthnle be s
+
+  TARGET : He must have fallen in with evil companions for he was a simple youth and quite trusting and inexperienced
+  PREDICT: He mls  jave faolmn On witl evelupomplnion  Mr  we was thoild 
+
+

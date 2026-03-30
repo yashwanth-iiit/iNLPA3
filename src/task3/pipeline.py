@@ -199,6 +199,7 @@ def load_lm_model(cfg, vocab, model_type, device):
 def decrypt_lines(model, lines, cipher_vocab, plain_vocab, max_cipher_len, max_plain_len, device, batch_size=64):
     """Decrypt a list of cipher lines using the LSTM model."""
     all_preds = []
+    all_confidences = []
 
     for i in range(0, len(lines), batch_size):
         batch_lines = lines[i:i+batch_size]
@@ -214,11 +215,12 @@ def decrypt_lines(model, lines, cipher_vocab, plain_vocab, max_cipher_len, max_p
         cipher_batch = pad_sequence(encoded, batch_first=True, padding_value=PAD_IDX).to(device)
 
         # Decode
-        pred_ids = model.decode_greedy(cipher_batch, SOS_IDX, EOS_IDX, max_plain_len)
+        pred_ids, conf_scores = model.decode_greedy(cipher_batch, SOS_IDX, EOS_IDX, max_plain_len)
         preds = decode_predictions(pred_ids, plain_vocab, EOS_IDX, PAD_IDX)
         all_preds.extend(preds)
+        all_confidences.extend(conf_scores.cpu().tolist())
 
-    return all_preds
+    return all_preds, all_confidences
 
 
 # ── LM Correction ─────────────────────────────────────────────────────────────

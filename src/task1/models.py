@@ -329,6 +329,7 @@ class Seq2Seq(nn.Module):
                 (src.shape[0],), sos_idx, dtype=torch.long, device=src.device
             )
             predictions = []
+            confidences = []
 
             for _ in range(max_len):
                 output, hidden, _ = self.decoder(
@@ -336,12 +337,13 @@ class Seq2Seq(nn.Module):
                 )
                 top1 = output.argmax(dim=-1)
                 predictions.append(top1)
+                confidences.append(torch.softmax(output, dim=-1).max(dim=-1).values)
                 dec_input = top1
 
                 if (top1 == eos_idx).all():
                     break
 
-        return torch.stack(predictions, dim=1)  # (batch, decoded_len)
+        return torch.stack(predictions, dim=1), torch.stack(confidences, dim=1)  # (batch, decoded_len), (batch, decoded_len)
 
 
 # ── Model factory ─────────────────────────────────────────────────────────────
