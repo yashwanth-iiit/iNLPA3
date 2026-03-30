@@ -139,34 +139,25 @@ class BahdanauAttention(nn.Module):
 
     def __init__(self, hidden_dim: int):
         super().__init__()
-        self.W_q = nn.Linear(hidden_dim, hidden_dim, bias=False)  # query (decoder)
-        self.W_k = nn.Linear(hidden_dim, hidden_dim, bias=False)  # key   (encoder)
+        self.W_q = nn.Linear(hidden_dim, hidden_dim, bias=False)
+        self.W_k = nn.Linear(hidden_dim, hidden_dim, bias=False)
         self.v   = nn.Linear(hidden_dim, 1, bias=False)
 
     def forward(
         self,
-        decoder_hidden: torch.Tensor,   # (batch, hidden_dim) — top layer hidden
-        encoder_outputs: torch.Tensor,  # (batch, src_len, hidden_dim)
-        src_mask: torch.Tensor | None = None,  # (batch, src_len) — True where PAD
+        decoder_hidden: torch.Tensor,
+        encoder_outputs: torch.Tensor,
+        src_mask: torch.Tensor | None = None,
     ) -> tuple[torch.Tensor, torch.Tensor]:
-
-        # decoder_hidden: (batch, hidden) → (batch, 1, hidden)
-        query = self.W_q(decoder_hidden).unsqueeze(1)
-        # encoder_outputs: (batch, src_len, hidden)
-        keys  = self.W_k(encoder_outputs)
-
-        # scores: (batch, src_len, 1) → (batch, src_len)
+        query  = self.W_q(decoder_hidden).unsqueeze(1)
+        keys   = self.W_k(encoder_outputs)
         scores = self.v(torch.tanh(query + keys)).squeeze(-1)
 
-        # Mask padding positions with -inf before softmax
         if src_mask is not None:
             scores = scores.masked_fill(src_mask, float("-inf"))
 
-        attn_weights = F.softmax(scores, dim=-1)              # (batch, src_len)
-
-        # context: (batch, 1, src_len) x (batch, src_len, hidden) → (batch, hidden)
+        attn_weights = F.softmax(scores, dim=-1)
         context = torch.bmm(attn_weights.unsqueeze(1), encoder_outputs).squeeze(1)
-
         return context, attn_weights
 
 
@@ -194,23 +185,14 @@ class Encoder(nn.Module):
             self.rnn = LSTMLayer(embedding_dim, hidden_dim, num_layers, dropout)
 
     def forward(self, src: torch.Tensor):
-        # src: (batch, src_len)
         embedded = self.dropout(self.embedding(src))
         outputs, hidden = self.rnn(embedded)
-        # outputs: (batch, src_len, hidden_dim) ← used by attention
-        # hidden: final hidden state(s)
         return outputs, hidden
 
 
 # ── Decoder with Attention ────────────────────────────────────────────────────
 class AttentionDecoder(nn.Module):
-    """
-    Decoder that uses Bahdanau attention over encoder outputs.
-    At each step:
-      1. Compute attention context from encoder outputs
-      2. Concatenate [embedding, context] as RNN/LSTM input
-      3. Project RNN output to vocab
-    """
+    """Decoder with Bahdanau attention over encoder outputs."""
 
     def __init__(
         self,
@@ -228,7 +210,6 @@ class AttentionDecoder(nn.Module):
         self.dropout = nn.Dropout(dropout)
         self.attention = BahdanauAttention(hidden_dim)
 
-        # Input to RNN = embedding + context vector
         rnn_input_dim = embedding_dim + hidden_dim
 
         if cell_type == "rnn":
@@ -236,42 +217,28 @@ class AttentionDecoder(nn.Module):
         else:
             self.rnn = LSTMLayer(rnn_input_dim, hidden_dim, num_layers, dropout)
 
-        # Project [rnn_output, context] → vocab
         self.fc_out = nn.Linear(hidden_dim + hidden_dim, vocab_size)
 
     def forward(
         self,
-        tgt: torch.Tensor,           # (batch,) single token
-        hidden,                       # decoder hidden state
-        encoder_outputs: torch.Tensor,  # (batch, src_len, hidden)
+        tgt: torch.Tensor,
+        hidden,
+        encoder_outputs: torch.Tensor,
         src_mask: torch.Tensor | None = None,
     ):
-        tgt = tgt.unsqueeze(1)                              # (batch, 1)
-        embedded = self.dropout(self.embedding(tgt))        # (batch, 1, emb_dim)
+        tgt = tgt.unsqueeze(1)
+        embedded = self.dropout(self.embedding(tgt))
 
-        # Get top-layer hidden for attention query
         if self.cell_type == "rnn":
-            top_hidden = hidden[-1]                         # (batch, hidden)
+            top_hidden = hidden[-1]
         else:
-            top_hidden = hidden[0][-1]                      # (batch, hidden)
+            top_hidden = hidden[0][-1]
 
-        context, attn_weights = self.attention(
-            top_hidden, encoder_outputs, src_mask
-        )                                                   # (batch, hidden)
-
-        # Concatenate embedding with context
-        rnn_input = torch.cat(
-            [embedded, context.unsqueeze(1)], dim=-1
-        )                                                   # (batch, 1, emb+hidden)
-
-        output, hidden = self.rnn(rnn_input, hidden)        # (batch, 1, hidden)
-        output = output.squeeze(1)                          # (batch, hidden)
-
-        # Predict from [rnn_output, context]
-        prediction = self.fc_out(
-            torch.cat([output, context], dim=-1)
-        )                                                   # (batch, vocab_size)
-
+        context, attn_weights = self.attention(top_hidden, encoder_outputs, src_mask)
+        rnn_input = torch.cat([embedded, context.unsqueeze(1)], dim=-1)
+        output, hidden = self.rnn(rnn_input, hidden)
+        output = output.squeeze(1)
+        prediction = self.fc_out(torch.cat([output, context], dim=-1))
         return prediction, hidden, attn_weights
 
 
@@ -285,8 +252,7 @@ class Seq2Seq(nn.Module):
         self.decoder = decoder
 
     def _make_src_mask(self, src: torch.Tensor) -> torch.Tensor:
-        """True where src == PAD — these positions are masked in attention."""
-        return src == 0  # (batch, src_len)
+        return src == 0
 
     def forward(
         self,
@@ -302,12 +268,10 @@ class Seq2Seq(nn.Module):
         src_mask = self._make_src_mask(src)
 
         encoder_outputs, hidden = self.encoder(src)
-        dec_input = tgt[:, 0]  # <SOS>
+        dec_input = tgt[:, 0]
 
         for t in range(1, tgt_len):
-            output, hidden, _ = self.decoder(
-                dec_input, hidden, encoder_outputs, src_mask
-            )
+            output, hidden, _ = self.decoder(dec_input, hidden, encoder_outputs, src_mask)
             outputs[:, t, :] = output
 
             if torch.rand(1).item() < teacher_forcing_ratio:
@@ -319,8 +283,13 @@ class Seq2Seq(nn.Module):
 
     def decode_greedy(
         self, src: torch.Tensor, sos_idx: int, eos_idx: int, max_len: int
-    ) -> torch.Tensor:
-        """Greedy decoding for inference."""
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        Greedy decoding for inference.
+        Returns:
+            predictions:  (batch, decoded_len) token ids
+            confidences:  (batch, decoded_len) softmax probability of chosen token
+        """
         self.eval()
         with torch.no_grad():
             src_mask = self._make_src_mask(src)
@@ -335,15 +304,19 @@ class Seq2Seq(nn.Module):
                 output, hidden, _ = self.decoder(
                     dec_input, hidden, encoder_outputs, src_mask
                 )
-                top1 = output.argmax(dim=-1)
+                probs = torch.softmax(output, dim=-1)       # (batch, vocab_size)
+                top1  = probs.argmax(dim=-1)                # (batch,)
+                conf  = probs.max(dim=-1).values            # (batch,) confidence score
+
                 predictions.append(top1)
-                confidences.append(torch.softmax(output, dim=-1).max(dim=-1).values)
+                confidences.append(conf)
                 dec_input = top1
 
                 if (top1 == eos_idx).all():
                     break
 
-        return torch.stack(predictions, dim=1), torch.stack(confidences, dim=1)  # (batch, decoded_len), (batch, decoded_len)
+        # (batch, decoded_len)
+        return torch.stack(predictions, dim=1), torch.stack(confidences, dim=1)
 
 
 # ── Model factory ─────────────────────────────────────────────────────────────
